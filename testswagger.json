@@ -1,8 +1,8 @@
 {
-    "url": "http://10.111.150.20/testswagger.yaml",
+    "url": "https://raw.githubusercontent.com/digitalsurgn/test/main/testswagger.yaml",
     "urls": [
         {
-            "url": "http://10.111.150.20/testswagger.yaml",
+            "url": "https://raw.githubusercontent.com/digitalsurgn/test/main/testswagger.yaml",
             "name": "Foo"
         }
     ]
