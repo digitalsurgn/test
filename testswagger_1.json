@@ -1,0 +1,9 @@
+{
+    "url": "https://raw.githubusercontent.com/digitalsurgn/test/main/testswagger_1.yaml",
+    "urls": [
+        {
+            "url": "https://raw.githubusercontent.com/digitalsurgn/test/main/testswagger_1.yaml",
+            "name": "Foo"
+        }
+    ]
+}
